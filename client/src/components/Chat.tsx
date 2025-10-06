@@ -6,7 +6,7 @@ import NewChat from './NewChat';
 
 export default function Chat() {
   const { user, token, logout } = useAuth();
-  const { chats, activeChatId, messages, loadChats, openChat, sendMessage, setSocket, addIncomingMessage } = useChat();
+  const { chats, activeChatId, messages, loadChats, openChat, sendMessage, setSocket, addIncomingMessage, setTyping, typing } = useChat();
   const [input, setInput] = useState('');
 
   const socket = useMemo(() => {
@@ -15,6 +15,7 @@ export default function Chat() {
     s.on('connect', () => console.log('socket connected'));
     s.on('message:new', (msg) => addIncomingMessage(msg));
     s.on('chat:updated', () => loadChats());
+    s.on('typing', ({ chatId, userId, typing }) => setTyping(chatId, userId, typing));
     setSocket(s);
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,6 +65,9 @@ export default function Chat() {
                   <div>{m.content}</div>
                 </div>
               ))}
+              {typing[activeChatId] && typing[activeChatId].size > 0 && (
+                <div style={{ fontSize: 12, color: '#888' }}>typing...</div>
+              )}
             </div>
           ) : (
             <div style={{ color: '#888' }}>Select a chat to start messaging</div>
@@ -76,7 +80,13 @@ export default function Chat() {
             sendMessage(activeChatId, input.trim());
             setInput('');
           }} style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid #eee' }}>
-            <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message" style={{ flex: 1 }} />
+            <input value={input} onChange={(e) => {
+              setInput(e.target.value);
+              if (activeChatId) {
+                if (e.target.value) socket?.emit('typing:start', activeChatId);
+                else socket?.emit('typing:stop', activeChatId);
+              }
+            }} placeholder="Type a message" style={{ flex: 1 }} />
             <button type="submit">Send</button>
           </form>
         )}

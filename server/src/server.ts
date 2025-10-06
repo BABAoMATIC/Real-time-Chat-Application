@@ -12,7 +12,9 @@ import jwt from 'jsonwebtoken';
 import { JwtUserPayload } from './types';
 
 const app = express();
-app.use(cors({ origin: ENV.CLIENT_ORIGIN, credentials: true }));
+// Allow any origin in dev for easier local setup; restrict in prod
+const apiCorsOrigin: any = ENV.NODE_ENV === 'development' ? true : ENV.CLIENT_ORIGIN;
+app.use(cors({ origin: apiCorsOrigin, credentials: false }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -23,7 +25,7 @@ app.use('/api/users', usersRouter);
 const httpServer = http.createServer(app);
 
 const io = new SocketIOServer(httpServer, {
-  cors: { origin: ENV.CLIENT_ORIGIN, credentials: true },
+  cors: { origin: ENV.NODE_ENV === 'development' ? '*' : ENV.CLIENT_ORIGIN, credentials: false },
 });
 
 type SocketUser = JwtUserPayload & { socketId: string };

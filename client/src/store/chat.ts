@@ -24,11 +24,13 @@ type ChatState = {
   activeChatId: string | null;
   messages: Record<string, Message[]>;
   socket: Socket | null;
+  typing: Record<string, Set<string>>; // chatId -> set of userIds
   setSocket: (s: Socket | null) => void;
   loadChats: () => Promise<void>;
   openChat: (chatId: string) => Promise<void>;
   sendMessage: (chatId: string, content: string) => void;
   addIncomingMessage: (message: Message) => void;
+  setTyping: (chatId: string, userId: string, isTyping: boolean) => void;
 };
 
 export const useChat = create<ChatState>((set, get) => ({
@@ -36,6 +38,7 @@ export const useChat = create<ChatState>((set, get) => ({
   activeChatId: null,
   messages: {},
   socket: null,
+  typing: {},
   setSocket(socket) {
     set({ socket });
   },
@@ -62,5 +65,12 @@ export const useChat = create<ChatState>((set, get) => ({
       },
       chats: state.chats.map((c) => (c.id === message.chatId ? { ...c, messages: [message], updatedAt: message.createdAt } : c)),
     }));
+  },
+  setTyping(chatId, userId, isTyping) {
+    set((state) => {
+      const current = new Set(state.typing[chatId] || []);
+      if (isTyping) current.add(userId); else current.delete(userId);
+      return { typing: { ...state.typing, [chatId]: current } };
+    });
   },
 }));
